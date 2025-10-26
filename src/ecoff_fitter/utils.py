@@ -5,6 +5,23 @@ import os
 
 
 def read_input(data, sheet_name=None):
+    """
+    Read MIC input data from a DataFrame or file and validate required columns.
+
+    Args:
+        data (str | DataFrame): Input source — a pandas DataFrame or file path
+            (.csv, .tsv, .txt, .xlsx, .xls).
+        sheet_name (str, optional): Excel sheet name to read if input is an Excel file.
+
+    Returns:
+        DataFrame: Cleaned MIC data with columns:
+            - "MIC" (str): MIC values.
+            - "observations" (int): Observation counts.
+
+    Raises:
+        ValueError: If input type is invalid or required columns are missing.
+        FileNotFoundError: If the specified file does not exist.
+    """
 
     if isinstance(data, pd.DataFrame):
         df = data.copy()
@@ -40,6 +57,21 @@ def read_input(data, sheet_name=None):
 
 
 def read_params(params):
+    """
+    Read ECOFF model parameters from a file or dictionary.
+
+    Args:
+        params (str | dict): File path to a YAML or text parameter file,
+            or a dictionary containing configuration values.
+
+    Returns:
+        tuple: (dilution_factor, distributions, tail_dilutions)
+
+    Raises:
+        FileNotFoundError: If the specified file does not exist.
+        ValueError: If file type is unsupported.
+        AssertionError: If input is not a valid file path or dictionary.
+    """
 
     if isinstance(params, str):
 
