@@ -8,10 +8,14 @@ It provides a command-line interface (CLI) to process input MIC
 distributions, estimate epidemiological cutoffs (ECOFFs), and generate
 model outputs and diagnostic plots.
 
-The package supports: - interval-censored, left-censored,
-right-censored, and uncensored MIC data - mixed datasets with variable
-censoring - automated output files (PDF reports, text outputs, plots) -
-configuration via parameter files
+The package supports:
+
+- interval-censored, left-censored,
+  right-censored, and uncensored MIC data
+- mixed datasets with variable
+  censoring
+- automated output files (PDF reports, text outputs, plots)
+- configuration via parameter files
 
 Demo input files are provided in `demo_files/` to illustrate basic use.
 
@@ -61,10 +65,12 @@ Once installed, you can call the CLI.
 Example using demo files:
 
 ```bash
-ecoffitter   -input demo_files/input.txt   -params demo_files/params.txt   -output demo_files/output.txt   --pdf demo_files/output.pdf
+ecoffitter   --input demo_files/input.txt   --params demo_files/params.txt   --outfile demo_files/output.txt
 ```
 
-usage:
+Instead of using a parameter file, you can also specify parameters directly.
+
+Usage:
 
 ```bash
 ecoff_fitter [-h] --input INPUT [--params PARAMS]
