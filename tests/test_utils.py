@@ -27,6 +27,24 @@ def test_read_input_strict_numeric(tmp_path):
     assert df["observations"].tolist() == [3, 4, 0]
 
 
+def test_read_input_single_column_conversion():
+    # A single-column MIC list containing duplicates
+    data = pd.DataFrame({
+        "MIC": ["0.06", "0.06", "0.12", "1", "1", "1"]
+    })
+
+    df = read_input(data)
+
+    # Should create exactly these columns
+    assert set(df.columns) == {"MIC", "observations"}
+
+    # MIC values should aggregate correctly
+    expected = pd.DataFrame({
+        "MIC": ["0.06", "0.12", "1"],
+        "observations": [2, 1, 3],
+    })
+
+
 def test_read_params_yaml_strict(tmp_path):
     defaults = (2, 1, None)
 
@@ -35,15 +53,17 @@ def test_read_params_yaml_strict(tmp_path):
         "dilution_factor: 8\n"
         "distributions: 2\n"
         "tail_dilutions: 5\n"
+        "percentile: 95\n"
     )
 
-    dilution, dists, tails = read_params(str(yaml_path), *defaults)
+    dilution, dists, tails, percentile = read_params(str(yaml_path), *defaults)
 
     # Strict numerical expectations
     assert dilution == 8
     assert isinstance(dilution, int)
     assert dists == 2
     assert tails == 5
+    assert percentile == 95
 
 
 def test_read_params_txt(tmp_path):
@@ -54,10 +74,11 @@ def test_read_params_txt(tmp_path):
         "dilution_factor = 4\n"
         "distributions = 2\n"
         "tail_dilutions = None\n"
+        "percentile = 99\n"
         "extra_value = 123\n"
     )
 
-    dilution, dists, tails = read_params(str(txt_path), *defaults)
+    dilution, dists, tails, percentile = read_params(str(txt_path), *defaults)
 
     # Strict numeric matches
     assert dilution == 4
@@ -65,6 +86,7 @@ def test_read_params_txt(tmp_path):
     assert dists == 2
     assert isinstance(dists, int)
     assert tails is None
+    assert percentile == 99
 
     # Extra params should be ingested but ignored for output keys
 
@@ -79,7 +101,7 @@ def test_read_params_dict():
         "tail_dilutions": None,
     }
 
-    dilution, dists, tails = read_params(params, *defaults)
+    dilution, dists, tails, percentile = read_params(params, *defaults)
 
     # Only integer keys are parsed as provided, not coerced
     assert dilution == 16
@@ -91,6 +113,9 @@ def test_read_params_dict():
 
     # Defaults respected
     assert tails is None
+
+    #check default percentile = None from parser
+    assert percentile is None
 
 
 def test_read_params_txt_invalid_format(tmp_path):

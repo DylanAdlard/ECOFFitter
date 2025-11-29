@@ -64,6 +64,8 @@ pip install -r requirements.txt
 
 The MIC dataset describes the distribution of Minimum Inhibitory Concentration (MIC) values and the number of isolates observed at each dilution.
 
+Alternatively, an array or single-column file of observed MICs can be supplied (ie 1 row per sample).
+
 It must be a **tabular file** in one of these formats:
 
 - `.csv`
@@ -77,6 +79,10 @@ It must be a **tabular file** in one of these formats:
 | -------------- | --------------- | ----------------------------------------------------------------------------------------------------------- |
 | `MIC`          | float or string | MIC dilution (e.g., `0.125`, `0.25`, `1`, `2`, …). Can include censored values such as `<=0.125` or `>=64`. |
 | `observations` | integer         | Number of isolates observed at that MIC dilution.                                                           |
+
+or
+
+A single column/array of observed MIC values.
 
 #### Example (from `demo_files/input.txt`)
 

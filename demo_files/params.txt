@@ -1,3 +1,4 @@
 dilution_factor = 2
 distributions = 2
 tail_dilutions = 2
+percentile = 99.9

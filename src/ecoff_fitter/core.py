@@ -37,7 +37,8 @@ class ECOFFitter:
 
         input should either be a dataframe of columns 'MICs' and 'observations', or
         a txt, tsv, csv, xlsx, or xls file path with a 2 column table of 'MICs' and
-        'observations'.
+        'observations'. Alternatively, an array or single column file of observed 
+        MICs can be supplied (ie 1 row per sample).
 
         params should be a dictionary or yaml, yml, or txt file path with key=value (integer)
         pairs for dilution_factor, distributions, and tail_dilutions.
@@ -62,9 +63,11 @@ class ECOFFitter:
 
         if params is not None:
             # overide explicit arguments with input dict/file
-            dilution_factor, distributions, tail_dilutions = read_params(
+            dilution_factor, distributions, tail_dilutions, percentile = read_params(
                 params, dilution_factor, distributions, tail_dilutions
             )
+            self.percentile = percentile
+
         # check parameter values
         validate_params(dilution_factor, distributions, tail_dilutions)
 
@@ -352,6 +355,9 @@ class ECOFFitter:
             For 2-component model:
                 (ecoff, z_percentile, mu1, sigma1, mu2, sigma2, model)
         """
+
+        if hasattr(self, 'percentile'):
+            percentile = self.percentile
 
         model = self.fit(options=options)
         results = self.compute_ecoff(model, percentile)

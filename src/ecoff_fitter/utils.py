@@ -1,37 +1,34 @@
 import pandas as pd
 import yaml
-import numpy as np
 import os
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import norm
 
 
 def read_input(data, sheet_name=None):
     """
-    Read MIC input data from a DataFrame or file and validate required columns.
-
-    Args:
-        data (str | DataFrame): Input source — a pandas DataFrame or file path
-            (.csv, .tsv, .txt, .xlsx, .xls).
-        sheet_name (str, optional): Excel sheet name to read if input is an Excel file.
+    Read MIC input data from a DataFrame, array-like, dict, or file
+    and validate required columns. If given a single-column input,
+    automatically aggregate it into MIC + observations format.
 
     Returns:
-        DataFrame: Cleaned MIC data with columns:
-            - "MIC" (str): MIC values.
-            - "observations" (int): Observation counts.
-
-    Raises:
-        ValueError: If input type is invalid or required columns are missing.
-        FileNotFoundError: If the specified file does not exist.
+        DataFrame with columns:
+            - MIC (str)
+            - observations (int)
     """
 
+    # Load into a DataFrame ----
     if isinstance(data, pd.DataFrame):
         df = data.copy()
+
+    elif isinstance(data, (list, tuple)):
+        df = pd.DataFrame({"MIC": data})
+
+    elif hasattr(data, "__array__"):  # numpy arrays
+        df = pd.DataFrame({"MIC": list(data)})
+
     elif isinstance(data, dict):
         df = pd.DataFrame.from_dict(data)
-    elif isinstance(data, str):
 
+    elif isinstance(data, str):
         ext = os.path.splitext(data)[-1].lower()
 
         if ext in [".csv"]:
@@ -42,22 +39,40 @@ def read_input(data, sheet_name=None):
             df = pd.read_excel(data, sheet_name=sheet_name)
         else:
             raise ValueError(f"Unsupported file type: {ext}")
-    else:
-        raise ValueError("Input must be a pandas DataFrame or path to file.")
 
-    expected_cols = ["MIC", "observations"]
-    missing = [c for c in expected_cols if c not in df.columns]
+    else:
+        raise ValueError("Input must be DataFrame, list, array, dict, or file path.")
+
+    df.columns = [str(c).strip() for c in df.columns]
+
+    # Handle single-column input automatically
+    if df.shape[1] == 1:
+        col = df.columns[0]
+        df["MIC"] = df[col].astype(str).str.strip()
+        
+        df = (
+            df.groupby("MIC")
+            .size()
+            .reset_index(name="observations")
+        )
+
+    expected = ["MIC", "observations"]
+    missing = [c for c in expected if c not in df.columns]
+
     if missing:
-        raise ValueError(f"Missing required columns: {missing}")
+        raise ValueError(
+            f"Missing required columns: {missing}. "
+            f"If using single-column input, it must be one column only."
+        )
 
     df["MIC"] = df["MIC"].astype(str).str.strip()
     df["observations"] = (
-        pd.to_numeric(df["observations"], errors="coerce").fillna(0).astype(int)
+        pd.to_numeric(df["observations"], errors="coerce")
+        .fillna(0)
+        .astype(int)
     )
 
-    df = df.dropna(subset=["MIC"])
-    df = df.reset_index(drop=True)
-
+    df = df.dropna(subset=["MIC"]).reset_index(drop=True)
     return df
 
 def read_params(params, dflt_dilution, dflt_dists, dflt_tails):
@@ -107,6 +122,8 @@ def read_params(params, dflt_dilution, dflt_dists, dflt_tails):
                             parsed[key] = int(val)
                     elif key == "distributions":
                         parsed[key] = int(val)
+                    elif key == "percentile":
+                        parsed[key] = float(val)
                     else:
                         parsed[key] = val
             params = parsed
@@ -114,13 +131,14 @@ def read_params(params, dflt_dilution, dflt_dists, dflt_tails):
             raise ValueError(f"Unsupported file type: {ext}")
 
     else:
-        assert isinstance(params, dict), (
-            "params must either be a file path or a dictionary"
-        )
+        assert isinstance(
+            params, dict
+        ), "params must either be a file path or a dictionary"
 
     # --- Apply defaults for any missing keys ---
     dilution_factor = params.get("dilution_factor", dflt_dilution)
     distributions = params.get("distributions", dflt_dists)
     tail_dilutions = params.get("tail_dilutions", dflt_tails)
+    percentile = params.get("percentile", None)
 
-    return dilution_factor, distributions, tail_dilutions
+    return dilution_factor, distributions, tail_dilutions, percentile

@@ -10,6 +10,7 @@ import argparse
 from ecoff_fitter import ECOFFitter
 from ecoff_fitter.report import GenerateReport
 from ecoff_fitter.defence import validate_output_path
+from unittest.mock import MagicMock, patch
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -20,7 +21,6 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    # --- Core inputs ---
     parser.add_argument(
         "--input",
         required=True,
@@ -37,8 +37,6 @@ def build_parser() -> argparse.ArgumentParser:
             "Overrides manual CLI options if provided."
         ),
     )
-
-    # --- Model configuration ---
     parser.add_argument(
         "--dilution_factor",
         type=int,
@@ -58,16 +56,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=1,
         help="Tail dilutions for censored data handling (None to disable).",
     )
-
-    # --- Analysis parameters ---
     parser.add_argument(
         "--percentile",
         type=float,
         default=99.0,
         help="Percentile to calculate the ECOFF (0–100).",
     )
-
-    # --- Output options ---
     parser.add_argument(
         "--outfile",
         help="Optional path to save ECOFF results to a text or pdf file.",
@@ -101,7 +95,7 @@ def main(argv=None):
     report.print_stats(args.verbose)
 
     if args.outfile:
-        
+
         validate_output_path(args.outfile)
 
         if args.outfile.endswith(".pdf"):

@@ -37,22 +37,36 @@ def validate_params_source(params):
     Pre-validate the params argument before attempting to read it.
 
     Args:
-        params (dict | str | None): Parameter input.
+        params (dict | str | list | array | DataFrame | None): Parameter input.
 
     Raises:
         FileNotFoundError: If the provided file path does not exist.
-        ValueError: If params is not a dictionary, file path, or None.
+        ValueError: If params is not a supported type.
     """
+
     if params is None:
         return
 
     if isinstance(params, str):
         if not os.path.exists(params):
             raise FileNotFoundError(f"Parameter file not found: {params}")
-        return  # file will be parsed later
+        return  # file will be read later
 
-    if not isinstance(params, dict):
-        raise ValueError("params must be a dictionary, file path string, or None.")
+    if isinstance(params, dict):
+        return
+
+    if isinstance(params, pd.DataFrame):
+        return
+
+    if isinstance(params, (list, tuple)):
+        return
+
+    if hasattr(params, "__array__"):
+        return
+
+    raise ValueError(
+        "params must be a dictionary, DataFrame, list, array, file path string, or None."
+    )
 
 
 
