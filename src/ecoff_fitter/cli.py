@@ -46,9 +46,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--distributions",
         type=int,
-        choices=[1, 2],
         default=1,
-        help="Number of normal components to fit (1 or 2).",
+        help="Number of normal components to fit.",
     )
     parser.add_argument(
         "--tail_dilutions",

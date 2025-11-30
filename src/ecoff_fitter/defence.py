@@ -113,8 +113,8 @@ def validate_params(dilution_factor, distributions, tail_dilutions):
     if not isinstance(dilution_factor, int) or dilution_factor <= 1:
         raise ValueError("dilution_factor must be an integer > 1.")
     
-    if distributions not in [1, 2]:
-        raise NotImplementedError("Only 1 or 2-component mixtures are supported.")
+    if not isinstance(distributions, int):
+        raise NotImplementedError("The number of mixture components must be an integer.")
     
     if tail_dilutions is not None and (
         not isinstance(tail_dilutions, int) or tail_dilutions < 0
