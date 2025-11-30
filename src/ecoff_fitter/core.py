@@ -2,13 +2,13 @@ import numpy as np
 from scipy.stats import norm
 from intreg.intreg import IntReg
 from ecoff_fitter.utils import read_input, read_params
-from scipy.optimize import minimize
 from ecoff_fitter.defence import (
     validate_input_source,
     validate_params_source,
     validate_mic_data,
     validate_params,
 )
+from ecoff_fitter.mixture import MixtureModel
 
 
 class ECOFFitter:
@@ -16,12 +16,12 @@ class ECOFFitter:
     Estimate epidemiological cutoff values (ECOFFs) using interval regression
     on MIC (Minimum Inhibitory Concentration) data.
 
-    If a single distribution is specified, a single interval regression gaussian
-    will be fitted and the ECOFF will be set at the specified percentile on generation.
+    If a single distribution is specified, a single censored-normal interval
+    regression model is fitted and the ECOFF is taken from the specified percentile.
 
-    If more than one distribution is specified, a mixture model will be fitted using
-    interval regression and the ECOFF will be taken as the lowest distribution's percentile
-
+    If more than one distribution is specified, a finite mixture of interval-
+    censored normals is fitted and the ECOFF is taken from the lowest-mean
+    (wild-type) component at the given percentile.
     """
 
     def __init__(
@@ -35,22 +35,22 @@ class ECOFFitter:
         """
         Initialize the ECOFFitter.
 
-        input should either be a dataframe of columns 'MICs' and 'observations', or
-        a txt, tsv, csv, xlsx, or xls file path with a 2 column table of 'MICs' and
-        'observations'. Alternatively, an array or single column file of observed 
-        MICs can be supplied (ie 1 row per sample).
+        Input may be a DataFrame with 'MIC' and 'observations' columns, or a
+        file (txt, csv, tsv, xlsx, xls) containing the same structure. A
+        single-column table or array of MIC values is also accepted.
 
-        params should be a dictionary or yaml, yml, or txt file path with key=value (integer)
-        pairs for dilution_factor, distributions, and tail_dilutions.
-
-        Instead of passing a params dict or file path, each parameter can be entered manually.
+        Parameters may be supplied directly, or via a dictionary or config
+        file (yaml, yml, txt) containing dilution_factor, distributions, and
+        tail_dilutions.
 
         Args:
-            input: Input data (file path or DataFrame) containing MIC observations.
-            params (dict | str | None): Parameter source (dict or file path). Overrides manual inputs if provided.
-            dilution_factor (int): Dilution factor for MIC doubling steps (default 2).
-            distributions (int): Number of normal components to fit (1 or 2).
-            tail_dilutions (int | None): Tail dilutions to handle censoring (default 1).
+            input: Input MIC data or file path.
+            params (dict | str | None): Optional parameter source overriding
+                manual arguments.
+            dilution_factor (int): MIC dilution factor (default 2).
+            distributions (int): Number of normal components to fit.
+            tail_dilutions (int | None): Number of dilutions defining
+                censoring bounds (default 1).
         """
 
         validate_input_source(input)
@@ -77,42 +77,60 @@ class ECOFFitter:
 
     def fit(self, options={}):
         """
-        Fit the interval regression model, either a single gaussian or finite mixture model.
+        Define MIC intervals and fit either a single censored-normal model
+        or a finite mixture model.
 
         Args:
-            options (dict): Optimization options for the solver.
+            options (dict): Optional solver or EM settings.
 
         Returns:
-            OptimizeResult: Optimization result containing fitted parameters.
+            self: The fitted ECOFFitter instance.
         """
         # Define and log-transform intervals
-        y_low, y_high, weights = self.define_intervals()
+        self.y_low_, self.y_high_, self.weights_ = self.define_intervals()
 
         if self.distributions == 1:
-            # single guassian
-            return IntReg(y_low, y_high, weights=weights).fit(
-                method="L-BFGS-B", initial_params=None, options=options
-            )
-
-        elif self.distributions == 2:
-            # 2 gaussians
-            return self.fit_mixture(y_low, y_high, weights, options)
+            return self.fit_single(options)
 
         else:
-            raise NotImplementedError("Only 1 or 2 componenent mixtures supported")
+            # multiple gaussians
+            return self.fit_mixture(options)
 
-    def fit_mixture(self, y_low, y_high, weights, options=None):
+    def fit_single(self, options=None):
         """
-        Fit a 2-component finite mixture of censored normals using the EM algorithm.
+        Fit a single-component censored normal distribution using interval
+        regression.
 
         Args:
-            y_low (array-like): Lower interval bounds.
-            y_high (array-like): Upper interval bounds.
-            weights (array-like): Observation weights.
-            options (dict | None): EM algorithm and refinement options.
+            options (dict | None): Optimization options for the solver.
 
         Returns:
-            object: Result object with fitted parameters, convergence status, and log-likelihood.
+            self: The fitted ECOFFitter instance with stored parameters.
+        """
+
+        # single guassian
+        model = IntReg(self.y_low_, self.y_high_, weights=self.weights_)
+        result = model.fit(method="L-BFGS-B", options=options)
+
+        self.model_ = model
+        self.x = result.x
+        self.mus_ = np.array([result.x[0]])
+        self.sigmas_ = np.array([np.exp(result.x[1])])
+        self.pis_ = np.array([1.0])
+        self.loglike_ = -result.fun
+        self.converged_ = result.success
+        self.n_iter_ = result.nit if hasattr(result, "nit") else None
+
+    def fit_mixture(self, options=None):
+        """
+        Fit a K-component finite mixture of censored normals using the EM
+        algorithm followed by optional refinement.
+
+        Args:
+            options (dict | None): EM and refinement options.
+
+        Returns:
+            self: The fitted ECOFFitter instance with stored mixture parameters.
         """
 
         options = options or {}
@@ -120,165 +138,34 @@ class ECOFFitter:
         tol = options.get("tol", 1e-6)
 
         # Ensure weights array
-        weights = np.asarray(weights, dtype=float)
-
-        # Initialization using single-component fit
-        base = IntReg(y_low, y_high, weights=weights).fit()
-        mu, log_sigma = base.x
-        mu1, mu2 = mu - 0.5, mu + 0.5
-        sigma1 = sigma2 = np.exp(log_sigma)
-        pi1 = 0.5
-        pi2 = 1 - pi1
-
+        weights = np.asarray(self.weights_, dtype=float)
 
         # Run EM algorithm
-        result = ECOFFitter._em_algorithm(
-            y_low,
-            y_high,
-            weights,
-            mu1,
-            sigma1,
-            mu2,
-            sigma2,
-            pi1,
-            pi2,
-            max_iter=max_iter,
-            tol=tol,
-        )
+        model = MixtureModel(self.y_low_, self.y_high_, weights, self.distributions)
+        model.fit(max_iter=max_iter, tol=tol, refine=options.get("refine", True))
 
-        # Optional refinement using minimizer
-        if result.converged and options.get("refine", True):
+        self.model_ = model
+        self.x = model.x
+        self.mus_ = model.mus
+        self.sigmas_ = model.sigmas
+        self.pis_ = model.pis
+        self.loglike_ = model.loglike
+        self.converged_ = model.converged
+        self.n_iter_ = model.n_iter
 
-            def _neg_log_L(params):
-                """log likelihood function for refinement"""
-                mu1, log_sigma1, mu2, log_sigma2, logit_pi = params
-                sigma1, sigma2 = np.exp(log_sigma1), np.exp(log_sigma2)
-                pi1 = 1 / (1 + np.exp(-logit_pi))
-                pi2 = 1 - pi1
-
-                p1 = IntReg.interval_prob(y_low, y_high, mu1, sigma1)
-                p2 = IntReg.interval_prob(y_low, y_high, mu2, sigma2)
-
-                mixture_p = pi1 * p1 + pi2 * p2
-                return -np.sum(weights * np.log(mixture_p))
-
-            init = result.x
-            result_ref = minimize(_neg_log_L, init, method="L-BFGS-B")
-            result.x = result_ref.x
-            mu1, log_sigma1, mu2, log_sigma2, logit_pi = result.x
-            result.params_.update(
-                {
-                    "mu1": mu1,
-                    "sigma1": np.exp(log_sigma1),
-                    "mu2": mu2,
-                    "sigma2": np.exp(log_sigma2),
-                    "pi1": 1 / (1 + np.exp(-logit_pi)),
-                    "pi2": 1 - 1 / (1 + np.exp(-logit_pi)),
-                }
-            )
-
-        return result
-    
-    @staticmethod
-    def _em_algorithm(
-        y_low,
-        y_high,
-        weights,
-        mu1,
-        sigma1,
-        mu2,
-        sigma2,
-        pi1,
-        pi2,
-        max_iter=500,
-        tol=1e-6,
-    ):
-        """
-        Expectation-Maximization (EM) algorithm for a 2-component mixture
-        of interval-censored normal distributions.
-
-        Args:
-            y_low (array-like): Lower interval bounds.
-            y_high (array-like): Upper interval bounds.
-            weights (array-like): Observation weights.
-            mu1, sigma1, mu2, sigma2 (float): Initial parameters of the components.
-            pi1, pi2 (float): Initial mixture proportions.
-            max_iter (int): Maximum EM iterations.
-            tol (float): Convergence tolerance for log-likelihood change.
-
-        Returns:
-            object: Result with fitted parameters, log-likelihood, and convergence info.
-        """
-
-        # initial mixture proportions
-        p1 = IntReg.interval_prob(y_low, y_high, mu1, sigma1)
-        p2 = IntReg.interval_prob(y_low, y_high, mu2, sigma2)
-        prev_ll = -np.inf
-
-        for it in range(max_iter):
-
-            # ----- E-step -----
-            r1 = pi1 * p1
-            r2 = pi2 * p2
-            total = np.clip(r1 + r2, 1e-300, np.inf)  # avoid division by zero
-            r1 /= total
-            r2 /= total
-
-            # ----- M-step -----
-            pi1 = np.sum(weights * r1) / np.sum(weights)
-            pi2 = 1 - pi1
-
-            w1 = weights * r1
-            w2 = weights * r2
-
-            res1 = IntReg(y_low, y_high, weights=w1).fit()
-            res2 = IntReg(y_low, y_high, weights=w2).fit()
-
-            mu1, log_sigma1 = res1.x
-            mu2, log_sigma2 = res2.x
-            sigma1, sigma2 = np.exp(log_sigma1), np.exp(log_sigma2)
-
-            # Recompute p1 and p2 using new parameters
-            p1 = IntReg.interval_prob(y_low, y_high, mu1, sigma1)
-            p2 = IntReg.interval_prob(y_low, y_high, mu2, sigma2)
-
-            # Compute new log-likelihood
-            ll = np.sum(weights * np.log(pi1 * p1 + pi2 * p2))
-
-            # Check convergence
-            if np.abs(ll - prev_ll) < tol:
-                converged = True
-                break
-
-            prev_ll = ll
-        else:
-            converged = False
-
-        class Result:
-            pass
-
-        result = Result()
-        result.x = np.array(
-            [mu1, np.log(sigma1), mu2, np.log(sigma2), np.log(pi1 / pi2)]
-        )
-        result.n_iter = it + 1
-        result.converged = converged
-        result.loglike = ll
-        result.params_ = dict(
-            mu1=mu1, sigma1=sigma1, mu2=mu2, sigma2=sigma2, pi1=pi1, pi2=pi2
-        )
-
-        return result
+        return self
 
     def define_intervals(self, df=None):
         """
-        Define MIC intervals and apply censoring rules.
+        Construct MIC interval bounds and apply left-, right-, and interval-
+        censoring rules, then transform to log dilution space.
 
         Args:
-            df (DataFrame | None): Optional DataFrame to override the internal data (useful for plots).
+            df (DataFrame | None): Optional MIC data to override stored input.
 
         Returns:
-            tuple: (y_low_log, y_high_log, weights) — log-transformed interval bounds and weights.
+            tuple: (y_low_log, y_high_log, weights) – log-transformed interval
+            bounds and observation weights.
         """
 
         if df is None:
@@ -302,6 +189,7 @@ class ECOFFitter:
                     else lower_bound / tail_dilution_factor
                 )
                 y_high[i] = lower_bound
+
             elif mic.startswith(">"):  # Right-censored value
                 upper_bound = float(mic[1:])
                 y_low[i] = upper_bound
@@ -310,6 +198,7 @@ class ECOFFitter:
                     if self.tail_dilutions is None
                     else upper_bound * tail_dilution_factor
                 )
+
             else:  # Exact MIC value
                 mic_value = float(mic)
                 y_low[i] = mic_value / self.dilution_factor
@@ -322,14 +211,14 @@ class ECOFFitter:
 
     def log_transf_intervals(self, y_low, y_high):
         """
-        Apply log transformation to interval bounds with the specified dilution factor.
+        Transform interval bounds into log base–dilution_factor space.
 
         Args:
-            y_low (array-like): Lower bounds of the intervals.
-            y_high (array-like): Upper bounds of the intervals.
+            y_low (array-like): Lower interval bounds.
+            y_high (array-like): Upper interval bounds.
 
         Returns:
-            tuple: Log-transformed lower and upper bounds.
+            tuple: Log-transformed (y_low_log, y_high_log).
         """
         log_base = np.log(self.dilution_factor)
         # Transform intervals to log space
@@ -343,64 +232,71 @@ class ECOFFitter:
 
     def generate(self, percentile: int | float = 99, options={}):
         """
-        Calculate the ECOFF value based on the fitted model and a specified percentile.
+        Fit the model and compute the ECOFF at a specified percentile.
 
         Args:
-            percentile (float): Desired percentile (e.g., 99 for 99th percentile).
-            options (dict): Model fitting options.
+            percentile (float): Desired percentile (default 99).
+            options (dict): Optional fit settings.
 
         Returns:
-            tuple: For 1-component model:
-                (ecoff, z_percentile, mu, sigma, model)
-            For 2-component model:
-                (ecoff, z_percentile, mu1, sigma1, mu2, sigma2, model)
+            tuple: ECOFF value, z-percentile, and fitted parameters.
         """
 
-        if hasattr(self, 'percentile'):
+        if hasattr(self, "percentile"):
             percentile = self.percentile
 
-        model = self.fit(options=options)
-        results = self.compute_ecoff(model, percentile)
+        self.fit(options=options)  # updates self.model_, self.mus_, etc.
+        results = self.compute_ecoff(percentile)
+        self.ecoff_ = results[0]
+        self.z_percentile_ = results[1]
 
-        # Return model as the last item for convenience
-        return (*results, model)
+        return results
 
-    def compute_ecoff(self, model, percentile: float):
+    def compute_ecoff(self, percentile: float):
         """
-        Compute ECOFF and related values given a fitted model and percentile.
+        Compute the ECOFF and percentile location from the fitted model.
 
         Args:
-            model: Fitted IntReg or mixture model result from self.fit().
-            percentile (float): Percentile (e.g., 99 for 99th percentile).
+            percentile (float): Percentile in the wild-type component.
 
         Returns:
-            tuple: 
-              For 1-component: (ecoff, z_percentile, mu, sigma)
-              For 2-component: (ecoff, z_percentile, mu1, sigma1, mu2, sigma2)
+            tuple:
+              For 1 component:
+                  (ecoff, z_percentile, mu, sigma)
+              For K components:
+                  (ecoff, z_percentile, mu1, sigma1, ..., muK, sigmaK)
         """
+
         assert 0 < percentile < 100, "percentile must be between 0 and 100"
 
         z = norm.ppf(percentile / 100)
 
+        # SINGLE COMPONENT
         if self.distributions == 1:
-            mu, log_sigma = model.x
-            sigma = np.exp(log_sigma)
+            mu = self.mus_[0]
+            sigma = self.sigmas_[0]
             z_percentile = mu + z * sigma
-            ecoff = self.dilution_factor ** z_percentile
+            ecoff = self.dilution_factor**z_percentile
             return ecoff, z_percentile, mu, sigma
 
-        elif self.distributions == 2:
-            mu1, log_sigma1, mu2, log_sigma2, logit_pi = model.x
-            sigma1, sigma2 = np.exp(log_sigma1), np.exp(log_sigma2)
+        # MULTI-COMPONENT
+        K = self.distributions
 
-            # pick WT (lower mean) component
-            mu_wt = mu1 if mu1 < mu2 else mu2
-            sigma_wt = sigma1 if mu1 < mu2 else sigma2
+        mus = self.mus_
+        sigmas = self.sigmas_
 
-            z_percentile = mu_wt + z * sigma_wt
-            ecoff = self.dilution_factor ** z_percentile
+        # WT = component with lowest mean
+        wt_idx = np.argmin(mus)
+        mu_wt = mus[wt_idx]
+        sigma_wt = sigmas[wt_idx]
 
-            return ecoff, z_percentile, mu1, sigma1, mu2, sigma2
+        # compute ECOFF on WT
+        z_percentile = mu_wt + z * sigma_wt
+        ecoff = self.dilution_factor**z_percentile
 
-        else:
-            raise NotImplementedError("Only 1 or 2 component mixtures supported")
+        # flatten
+        mus_sigmas = []
+        for k in range(K):
+            mus_sigmas.extend([mus[k], sigmas[k]])
+
+        return (ecoff, z_percentile, *mus_sigmas)

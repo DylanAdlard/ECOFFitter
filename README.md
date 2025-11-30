@@ -1,4 +1,4 @@
-[![codecov](https://codecov.io/gh/DylanAdlard/ECOFFitter/graph/badge.svg?token=0Q0YSOZYKW)](https://codecov.io/gh/DylanAdlard/ECOFFitter)
+[![codecov](https://codecov.io/gh/fowler-lab/ECOFFitter/graph/badge.svg?token=VEkosXEIAQ)](https://codecov.io/gh/fowler-lab/ECOFFitter)
 
 # ECOFFitter
 

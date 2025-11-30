@@ -83,10 +83,6 @@ def test_validate_params():
     with pytest.raises(ValueError):
         validate_params(1, 1, 0)
 
-    # invalid distributions
-    with pytest.raises(NotImplementedError):
-        validate_params(2, 3, 0)
-
     # invalid tail_dilutions
     with pytest.raises(ValueError):
         validate_params(2, 1, -1)

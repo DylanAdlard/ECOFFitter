@@ -1,5 +1,6 @@
 scipy
 pytest
+scikit-learn
 pandas
 joblib
 PyYAML
