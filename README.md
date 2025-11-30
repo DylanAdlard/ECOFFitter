@@ -111,7 +111,7 @@ Typical fields include:
 | Key               | Description                                                     |
 | ----------------- | --------------------------------------------------------------- |
 | `dilution_factor` | Fold-change between MIC dilutions (e.g., `2`).                  |
-| `distributions`   | Number of Gaussian mixture components (`1` or `2`).             |
+| `distributions`   | Number of Gaussian mixture components.                          |
 | `tail_dilutions`  | How many dilution steps to extend upper tail for censored data. |
 | `percentile`      | Percentile used to compute the ECOFF (e.g., `99`).              |
 
@@ -145,7 +145,7 @@ If `--outfile` ends in `.txt`, the tool writes:
 
 - ECOFF estimate
 - fitted mean & variance (per component)
-- mixture weights (if 2 distributions)
+- mixture weights (if multiple distributions)
 - percentiles
 - likelihood values
 
@@ -176,7 +176,7 @@ Usage:
 ```bash
 ecoff_fitter [-h] --input INPUT [--params PARAMS]
 [--dilution_factor DILUTION_FACTOR]
-[--distributions {1,2}] [--tail_dilutions TAIL_DILUTIONS]
+[--distributions ] [--tail_dilutions TAIL_DILUTIONS]
 [--percentile PERCENTILE] [--outfile OUTFILE] [--verbose]
 ```
 
@@ -192,7 +192,7 @@ ecoff_fitter [-h] --input INPUT [--params PARAMS]
 | `--input`           | `INPUT`           | Path to the input MIC dataset (CSV, TSV, XLSX, or XLS). Must contain columns `MIC` and `observations`.                                                           | `None`  |
 | `--params`          | `PARAMS`          | Optional parameter file (`YAML`, `TXT`, or `key=value` list). Defines `dilution_factor`, `distributions`, and `tail_dilutions`. Overrides CLI flags if provided. | `None`  |
 | `--dilution_factor` | `DILUTION_FACTOR` | Dilution factor                                                                                                                                                  | `2`     |
-| `--distributions`   | `{1,2}`           | Number of Gaussian mixture components to fit.                                                                                                                    | `1`     |
+| `--distributions`   | `DISTRIBUTIONS`   | Number of Gaussian mixture components to fit.                                                                                                                    | `1`     |
 | `--tail_dilutions`  | `TAIL_DILUTIONS`  | Extra upper-dilution steps for censored MICs (set to `None` to disable).                                                                                         | `1`     |
 | `--percentile`      | `PERCENTILE`      | Percentile used to compute the ECOFF (0–100).                                                                                                                    | `99.0`  |
 | `--outfile`         | `OUTFILE`         | Path to save ECOFF results (`.txt` or `.pdf`).                                                                                                                   | `None`  |
