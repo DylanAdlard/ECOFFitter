@@ -27,9 +27,7 @@ jobs:
 
       - name: Build macOS app
         run: |
-          pyinstaller \
-            --windowed \
-            --noconsole \
+          pyinstaller --onefile --noconsole \
             --paths src \
             --add-data "src/ecoff_fitter:ecoff_fitter" \
             --hidden-import matplotlib \
