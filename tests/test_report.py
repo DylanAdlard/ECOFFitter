@@ -80,7 +80,7 @@ def test_main_runs_with_minimal_args(mock_fitter, mock_report, monkeypatch):
         params=None,
         dilution_factor=2,
         distributions=1,
-        tail_dilutions=1,
+        boundary_support=1,
     )
 
     mock_fitter.generate.assert_called_once_with(percentile=99.0)

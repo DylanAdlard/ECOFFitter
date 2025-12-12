@@ -97,14 +97,14 @@ def validate_mic_data(df):
         raise ValueError(f"Invalid MIC format found in rows: {bad_rows.index.tolist()}")
 
 
-def validate_params(dilution_factor, distributions, tail_dilutions):
+def validate_params(dilution_factor, distributions, boundary_support):
     """
     Validate ECOFFitter configuration values.
 
     Args:
         dilution_factor (int): The MIC dilution step.
         distributions (int): Number of components in the mixture.
-        tail_dilutions (int | None): Number of tail dilutions to include.
+        boundary_support (int | None): Number of boundary support to include.
 
     Raises:
         ValueError: If any parameter is outside acceptable range.
@@ -116,10 +116,10 @@ def validate_params(dilution_factor, distributions, tail_dilutions):
     if not isinstance(distributions, int):
         raise NotImplementedError("The number of mixture components must be an integer.")
     
-    if tail_dilutions is not None and (
-        not isinstance(tail_dilutions, int) or tail_dilutions < 0
+    if boundary_support is not None and (
+        not isinstance(boundary_support, int) or boundary_support < 0
     ):
-        raise ValueError("tail_dilutions must be a non-negative integer or None.")
+        raise ValueError("boundary_support must be a non-negative integer or None.")
 
 
 

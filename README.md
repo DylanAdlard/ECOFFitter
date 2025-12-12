@@ -108,19 +108,19 @@ This is an **optional** configuration file (YAML, TXT, or `key=value` list) that
 
 Typical fields include:
 
-| Key               | Description                                                     |
-| ----------------- | --------------------------------------------------------------- |
-| `dilution_factor` | Fold-change between MIC dilutions (e.g., `2`).                  |
-| `distributions`   | Number of Gaussian mixture components.                          |
-| `tail_dilutions`  | How many dilution steps to extend upper tail for censored data. |
-| `percentile`      | Percentile used to compute the ECOFF (e.g., `99`).              |
+| Key                | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| `dilution_factor`  | Fold-change between MIC dilutions (e.g., `2`).                  |
+| `distributions`    | Number of Gaussian mixture components.                          |
+| `boundary_support` | How many dilution steps to extend upper tail for censored data. |
+| `percentile`       | Percentile used to compute the ECOFF (e.g., `99`).              |
 
 #### Example (`demo_files/params.txt`)
 
 ```text
 dilution_factor=2
 distributions=1
-tail_dilutions=1
+boundary_support=1
 percentile=99
 ```
 
@@ -129,13 +129,13 @@ or YAML:
 ```text
 dilution_factor: 2
 distributions: 2
-tail_dilutions: 1
+boundary_support: 1
 percentile: 99
 ```
 
 ## 📤 Output
 
-The tool produces one or more of the following.
+The tool produces one or more of the following:
 
 ---
 
@@ -176,7 +176,7 @@ Usage:
 ```bash
 ecoff_fitter [-h] --input INPUT [--params PARAMS]
 [--dilution_factor DILUTION_FACTOR]
-[--distributions ] [--tail_dilutions TAIL_DILUTIONS]
+[--distributions ] [--boundary_support boundary_support]
 [--percentile PERCENTILE] [--outfile OUTFILE] [--verbose]
 ```
 
@@ -186,17 +186,17 @@ ecoff_fitter [-h] --input INPUT [--params PARAMS]
 
 ### CLI Options
 
-| Option              | Argument          | Description                                                                                                                                                      | Default |
-| ------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `-h`, `--help`      | —                 | Show help message and exit.                                                                                                                                      | —       |
-| `--input`           | `INPUT`           | Path to the input MIC dataset (CSV, TSV, XLSX, or XLS). Must contain columns `MIC` and `observations`.                                                           | `None`  |
-| `--params`          | `PARAMS`          | Optional parameter file (`YAML`, `TXT`, or `key=value` list). Defines `dilution_factor`, `distributions`, and `tail_dilutions`. Overrides CLI flags if provided. | `None`  |
-| `--dilution_factor` | `DILUTION_FACTOR` | Dilution factor                                                                                                                                                  | `2`     |
-| `--distributions`   | `DISTRIBUTIONS`   | Number of Gaussian mixture components to fit.                                                                                                                    | `1`     |
-| `--tail_dilutions`  | `TAIL_DILUTIONS`  | Extra upper-dilution steps for censored MICs (set to `None` to disable).                                                                                         | `1`     |
-| `--percentile`      | `PERCENTILE`      | Percentile used to compute the ECOFF (0–100).                                                                                                                    | `99.0`  |
-| `--outfile`         | `OUTFILE`         | Path to save ECOFF results (`.txt` or `.pdf`).                                                                                                                   | `None`  |
-| `--verbose`         | —                 | Print detailed model information and parameters.                                                                                                                 | `False` |
+| Option               | Argument           | Description                                                                                                                                                        | Default |
+| -------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
+| `-h`, `--help`       | —                  | Show help message and exit.                                                                                                                                        | —       |
+| `--input`            | `INPUT`            | Path to the input MIC dataset (CSV, TSV, XLSX, or XLS). Must contain columns `MIC` and `observations`.                                                             | `None`  |
+| `--params`           | `PARAMS`           | Optional parameter file (`YAML`, `TXT`, or `key=value` list). Defines `dilution_factor`, `distributions`, and `boundary_support`. Overrides CLI flags if provided. | `None`  |
+| `--dilution_factor`  | `DILUTION_FACTOR`  | Dilution factor                                                                                                                                                    | `2`     |
+| `--distributions`    | `DISTRIBUTIONS`    | Number of Gaussian mixture components to fit.                                                                                                                      | `1`     |
+| `--boundary_support` | `boundary_support` | Extra upper-dilution steps for censored MICs (set to `None` to disable).                                                                                           | `1`     |
+| `--percentile`       | `PERCENTILE`       | Percentile used to compute the ECOFF (0–100).                                                                                                                      | `99.0`  |
+| `--outfile`          | `OUTFILE`          | Path to save ECOFF results (`.txt` or `.pdf`).                                                                                                                     | `None`  |
+| `--verbose`          | —                  | Print detailed model information and parameters.                                                                                                                   | `False` |
 
 ---
 
