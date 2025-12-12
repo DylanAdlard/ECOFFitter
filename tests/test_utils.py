@@ -52,7 +52,7 @@ def test_read_params_yaml_strict(tmp_path):
     yaml_path.write_text(
         "dilution_factor: 8\n"
         "distributions: 2\n"
-        "tail_dilutions: 5\n"
+        "boundary_support: 5\n"
         "percentile: 95\n"
     )
 
@@ -73,7 +73,7 @@ def test_read_params_txt(tmp_path):
     txt_path.write_text(
         "dilution_factor = 4\n"
         "distributions = 2\n"
-        "tail_dilutions = None\n"
+        "boundary_support = None\n"
         "percentile = 99\n"
         "extra_value = 123\n"
     )
@@ -98,7 +98,7 @@ def test_read_params_dict():
     params = {
         "dilution_factor": 16,
         "distributions": "2",      # test string that should remain a string (no coercion!)
-        "tail_dilutions": None,
+        "boundary_support": None,
     }
 
     dilution, dists, tails, percentile = read_params(params, *defaults)

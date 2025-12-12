@@ -45,7 +45,7 @@ class ECOFFGUI:
         self.dil_entry.insert(0, "2")
         self.dil_entry.pack(side="left", padx=10)
 
-        tk.Label(options_frame, text="Series tails:").pack(side="left")
+        tk.Label(options_frame, text="Boundary intervals:").pack(side="left")
         self.tails_entry = tk.Entry(options_frame, width=5)
         self.tails_entry.insert(0, "1")
         self.tails_entry.pack(side="left", padx=10)
@@ -65,7 +65,7 @@ class ECOFFGUI:
         tk.Button(output_frame, text="Browse", command=self.select_output).pack(side="left")
 
         # RUN BUTTON
-        tk.Button(root, text="Run ECOFF", command=self.run_ecoff,
+        tk.Button(root, text="Fit", command=self.run_ecoff,
                   bg="#4CAF50", fg="white").pack(pady=10)
 
         # RESULTS TEXT WINDOW
@@ -116,7 +116,7 @@ class ECOFFGUI:
             self.output_entry.delete(0, tk.END)
             self.output_entry.insert(0, file)
 
-    # RUN ECOFF FITTING
+    # Fit
     def run_ecoff(self):
         input_file = self.input_entry.get()
         params_file = self.params_entry.get() or None
@@ -141,7 +141,7 @@ class ECOFFGUI:
                 input=df_global,
                 params=params_file,
                 distributions=distributions,
-                tail_dilutions=tails,
+                boundary_support=tails,
                 dilution_factor=dilution_factor,
             )
             global_result = global_fitter.generate(percentile=percentile)
@@ -153,7 +153,7 @@ class ECOFFGUI:
                     input=subdf,
                     params=params_file,
                     distributions=distributions,
-                    tail_dilutions=tails,
+                    boundary_support=tails,
                     dilution_factor=dilution_factor,
                 )
                 result = fitter.generate(percentile=percentile)

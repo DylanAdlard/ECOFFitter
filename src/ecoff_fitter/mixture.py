@@ -37,14 +37,26 @@ class MixtureModel:
         y_high = np.asarray(y_high, dtype=float)
         weights = np.asarray(weights, dtype=float)
 
-        mid = (y_low + y_high) / 2
-        mid_reshaped = mid.reshape(-1, 1)  # sklearn expects 2D
+        # Find finite bounds
+        finite_high = np.max(y_high[np.isfinite(y_high)])
+        finite_low  = np.min(y_low[np.isfinite(y_low)])
+
+        # KMeans cannot handle inf → substitute only for midpoint computation
+        y_low_km  = y_low.copy()
+        y_high_km = y_high.copy()
+
+        y_high_km[np.isinf(y_high_km)] = finite_high + 1.0
+        y_low_km[np.isinf(y_low_km)]   = finite_low - 1.0
+
+        mid = (y_low_km + y_high_km) / 2
+        mid_reshaped = mid.reshape(-1, 1)
 
         kmeans = KMeans(
             n_clusters=self.K,
             n_init="auto",
             random_state=0,
         ).fit(mid_reshaped, sample_weight=weights)
+
 
         # Cluster centres → initial mus
         mus = kmeans.cluster_centers_.flatten()

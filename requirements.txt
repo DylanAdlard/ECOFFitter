@@ -7,3 +7,4 @@ PyYAML
 matplotlib
 pytest-cov
 intreg
+openpyxl

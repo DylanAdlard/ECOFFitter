@@ -1,4 +1,4 @@
 dilution_factor = 2
 distributions = 2
-tail_dilutions = 3
+boundary_support = 3
 percentile = 99

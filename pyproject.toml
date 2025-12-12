@@ -25,7 +25,8 @@ dependencies = [
     "joblib",
     "matplotlib",
     "PyYAML",
-    "intreg"
+    "intreg",
+    "openpyxl"
 ]
 
 [project.urls]

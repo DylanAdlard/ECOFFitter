@@ -83,7 +83,7 @@ def test_define_intervals_uncensored(simple_data):
 
 
 def test_define_intervals_with_censoring(censored_data):
-    fitter = ECOFFitter(censored_data, tail_dilutions=None)
+    fitter = ECOFFitter(censored_data, boundary_support=None)
     y_low, y_high, _ = fitter.define_intervals()
 
     # left censored: <=0.5 → low = ~0

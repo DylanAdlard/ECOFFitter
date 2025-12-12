@@ -30,7 +30,7 @@ class ECOFFitter:
         params: dict | str | None = None,
         dilution_factor: int = 2,
         distributions: int = 1,
-        tail_dilutions: int | None = 1,
+        boundary_support: int | None = 1,
     ):
         """
         Initialize the ECOFFitter.
@@ -41,7 +41,7 @@ class ECOFFitter:
 
         Parameters may be supplied directly, or via a dictionary or config
         file (yaml, yml, txt) containing dilution_factor, distributions, and
-        tail_dilutions.
+        boundary_support.
 
         Args:
             input: Input MIC data or file path.
@@ -49,7 +49,7 @@ class ECOFFitter:
                 manual arguments.
             dilution_factor (int): MIC dilution factor (default 2).
             distributions (int): Number of normal components to fit.
-            tail_dilutions (int | None): Number of dilutions defining
+            boundary_support (int | None): Number of intervals defining
                 censoring bounds (default 1).
         """
 
@@ -63,17 +63,17 @@ class ECOFFitter:
 
         if params is not None:
             # overide explicit arguments with input dict/file
-            dilution_factor, distributions, tail_dilutions, percentile = read_params(
-                params, dilution_factor, distributions, tail_dilutions
+            dilution_factor, distributions, boundary_support, percentile = read_params(
+                params, dilution_factor, distributions, boundary_support
             )
             self.percentile = percentile
 
         # check parameter values
-        validate_params(dilution_factor, distributions, tail_dilutions)
+        validate_params(dilution_factor, distributions, boundary_support)
 
         self.dilution_factor = dilution_factor
         self.distributions = distributions
-        self.tail_dilutions = tail_dilutions
+        self.boundary_support = boundary_support
 
     def fit(self, options={}):
         """
@@ -177,8 +177,8 @@ class ECOFFitter:
         weights = df.observations.to_numpy()
 
         # Calculate tail dilution factor if not censored
-        if self.tail_dilutions is not None:
-            tail_dilution_factor = self.dilution_factor**self.tail_dilutions
+        if self.boundary_support is not None:
+            tail_dilution_factor = self.dilution_factor**self.boundary_support
 
         # Process each MIC value and define intervals
         for i, mic in enumerate(df.MIC):
@@ -186,7 +186,7 @@ class ECOFFitter:
                 lower_bound = float(mic[2:])
                 y_low[i] = (
                     1e-6
-                    if self.tail_dilutions is None
+                    if self.boundary_support is None
                     else lower_bound / tail_dilution_factor
                 )
                 y_high[i] = lower_bound
@@ -196,7 +196,7 @@ class ECOFFitter:
                 y_low[i] = upper_bound
                 y_high[i] = (
                     np.inf
-                    if self.tail_dilutions is None
+                    if self.boundary_support is None
                     else upper_bound * tail_dilution_factor
                 )
 

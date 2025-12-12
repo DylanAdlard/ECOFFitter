@@ -84,10 +84,10 @@ def read_params(params, dflt_dilution, dflt_dists, dflt_tails):
             or a dictionary containing configuration values.
         dflt_dilution (int): Default dilution factor.
         dflt_dists (int): Default number of distributions.
-        dflt_tails (int | None): Default number of tail dilutions.
+        dflt_tails (int | None): Default number of boundary support.
 
     Returns:
-        tuple: (dilution_factor, distributions, tail_dilutions)
+        tuple: (dilution_factor, distributions, boundary_support)
 
     Raises:
         FileNotFoundError: If the specified file does not exist.
@@ -115,7 +115,7 @@ def read_params(params, dflt_dilution, dflt_dists, dflt_tails):
                     key, val = [x.strip() for x in line.split("=", 1)]
                     if key == "dilution_factor":
                         parsed[key] = int(val)
-                    elif key == "tail_dilutions":
+                    elif key == "boundary_support":
                         if val.lower() == "none":
                             parsed[key] = None
                         else:
@@ -138,10 +138,10 @@ def read_params(params, dflt_dilution, dflt_dists, dflt_tails):
     # --- Apply defaults for any missing keys ---
     dilution_factor = params.get("dilution_factor", dflt_dilution)
     distributions = params.get("distributions", dflt_dists)
-    tail_dilutions = params.get("tail_dilutions", dflt_tails)
+    boundary_support = params.get("boundary_support", dflt_tails)
     percentile = params.get("percentile", None)
 
-    return dilution_factor, distributions, tail_dilutions, percentile
+    return dilution_factor, distributions, boundary_support, percentile
 
 
 def read_multi_obs_input(data, sheet_name=None):
@@ -179,7 +179,7 @@ def read_multi_obs_input(data, sheet_name=None):
         elif ext in [".tsv", ".txt"]:
             df = pd.read_csv(data, sep=r"\s+")
         elif ext in [".xlsx", ".xls"]:
-            df = pd.read_excel(data, sheet_name=sheet_name)
+            df = pd.read_excel(data, sheet_name='Sheet1')
         else:
             raise ValueError(f"Unsupported file type: {ext}")
 

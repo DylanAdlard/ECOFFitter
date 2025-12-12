@@ -33,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--params",
         help=(
             "Optional path to a parameter file (YAML, TXT, or key=value list) "
-            "defining dilution_factor, distributions, and tail_dilutions. "
+            "defining dilution_factor, distributions, and boundary_support. "
             "Overrides manual CLI options if provided."
         ),
     )
@@ -50,10 +50,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Number of normal components to fit.",
     )
     parser.add_argument(
-        "--tail_dilutions",
+        "--boundary_support",
         type=int,
         default=1,
-        help="Tail dilutions for censored data handling (None to disable).",
+        help="boundary support for censored data handling (None to disable).",
     )
     parser.add_argument(
         "--percentile",
@@ -84,7 +84,7 @@ def main(argv=None):
         params=args.params,
         dilution_factor=args.dilution_factor,
         distributions=args.distributions,
-        tail_dilutions=args.tail_dilutions,
+        boundary_support=args.boundary_support,
     )
 
     result = fitter.generate(percentile=args.percentile)
